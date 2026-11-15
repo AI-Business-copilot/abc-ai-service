@@ -64,6 +64,13 @@ class ResearchTests(unittest.TestCase):
         scores["lightgbm"]["wape"] = 0.95
         self.assertEqual(select_method(scores), "mean_28")
 
+    def test_backtest_skips_origins_with_unknown_recent_stock_history(self):
+        rows = [{"units_sold": 2, "stockout": False} for _ in range(56)]
+        rows[27]["stockout"] = None
+        with patch("research.predict", return_value=[14, 28, 56]):
+            scores = rolling_backtest(rows, [], True)
+        self.assertTrue(all(score["count"] == 0 for score in scores.values()))
+
 
 if __name__ == "__main__":
     unittest.main()

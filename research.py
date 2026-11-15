@@ -100,7 +100,8 @@ def rolling_backtest(history: list[dict], models: list, impute: bool) -> dict:
         if cut < MIN_HISTORY:
             break
         future = history[cut:cut + 7]
-        if any(row.get("stockout") is not False for row in future):
+        if (any(row.get("stockout") is None for row in history[:cut])
+                or any(row.get("stockout") is not False for row in future)):
             continue
         actual = sum(row["units_sold"] for row in future)
         for method, forecast in compare_methods(models, history[:cut], impute).items():

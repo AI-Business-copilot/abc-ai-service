@@ -76,6 +76,31 @@ class ServiceTests(unittest.TestCase):
                 variants=[{"variant_id": "sku", "history": [{**self.history[-1], "latent_demand": 5}]}],
             )
 
+    def test_unknown_stock_history_is_not_treated_as_known_availability(self):
+        history = [{**row, "stockout": None if index == 0 else False} for index, row in enumerate(self.history)]
+        body = ForecastRequest(request_id="test", as_of="2025-01-28", variants=[{"variant_id": "sku", "history": history}])
+        with patch.dict(os.environ, {"FORECAST_API_TOKEN": "local-test"}), patch("service.compare_methods") as predict:
+            result = forecasts(body, self.request, "local-test")["results"][0]
+        self.assertEqual(result["reason"], "CENSORED_HISTORY")
+        predict.assert_not_called()
+
+    def test_old_unknown_stock_history_is_excluded_from_all_methods(self):
+        days = generate(4, 1, 56, date(2025, 1, 1))["variants"][0]["days"]
+        history = [{"date": row["date"], "units_sold": row["units_sold"], "stockout": None if index == 10 else False}
+                   for index, row in enumerate(days)]
+        body = ForecastRequest(request_id="test", as_of="2025-02-25", variants=[{"variant_id": "sku", "history": history}])
+        seen = []
+
+        def fake_predict(_models, rows, _impute):
+            seen.append(rows)
+            return [7, 14, 28]
+
+        with patch.dict(os.environ, {"FORECAST_API_TOKEN": "local-test"}), patch("research.predict", side_effect=fake_predict):
+            result = forecasts(body, self.request, "local-test")["results"][0]
+        self.assertEqual(result["status"], "OK")
+        self.assertEqual(len(seen[-1]), 45)
+        self.assertTrue(all(row["stockout"] is False for rows in seen for row in rows))
+
 
 if __name__ == "__main__":
     unittest.main()

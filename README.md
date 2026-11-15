@@ -73,15 +73,16 @@ Nếu cổng 8001 đang được sử dụng, dừng service cũ trước khi ch
 `X-Forecast-Token`; truyền `request_id`, `as_of` và `variants`, mỗi SKU gồm
 `variant_id` và `history` liên tiếp tới `as_of`. Mỗi ngày có `date`,
 `units_sold`, `stockout` (true, false hoặc null). `min_series_days` mặc định 28,
-cho phép tăng theo cấu hình. Chuỗi ngắn hoặc có dưới 7 ngày không hết hàng trong
-28 ngày gần nhất trả `INSUFFICIENT_DATA`; ngày thiếu/trùng hoặc không kết thúc
+cho phép tăng theo cấu hình. Chuỗi ngắn, có ngày tồn kho không rõ hoặc dưới 7 ngày
+đóng cửa còn hàng trong 28 ngày gần nhất trả `INSUFFICIENT_DATA`; ngày thiếu/trùng hoặc không kết thúc
 tại `as_of` trả `INVALID_HISTORY`. Không gửi trường đáp án ẩn. Tối đa 200 SKU
 mỗi request; backend chia batch.
 
 Khi đủ dữ liệu, Python so sánh tất cả phương pháp bằng tối đa bốn kỳ rolling-origin
 7 ngày gần nhất, chỉ dùng kỳ mà mọi ngày được xác nhận không hết hàng. Dự báo của
 mỗi mốc chỉ dùng lịch sử trước mốc; LightGBM dùng artifact cố định huấn luyện
-trên dữ liệu giả lập. Chọn trung bình 28 ngày nếu có dưới hai kỳ hợp lệ hoặc
+trên dữ liệu giả lập. Lịch sử trước ngày tồn kho không rõ gần nhất không được
+đưa vào các phương pháp; tồn cuối ngày không chứng minh có hàng cả ngày. Chọn trung bình 28 ngày nếu có dưới hai kỳ hợp lệ hoặc
 không tính được WAPE; chỉ chuyển phương pháp khi WAPE thấp hơn baseline hơn 10%.
 Độ lệch chuẩn lấy từ các ngày không hết hàng trong 28 ngày gần nhất; mức tin cậy
 là phân loại theo backtest, không phải khoảng xác suất được hiệu chuẩn.
@@ -92,4 +93,6 @@ bằng cùng token của service, sau đó khởi động lại backend. Service
 cùng máy; backend chỉ cho phép địa chỉ loopback này và không ghi token vào log.
 Chạy phân tích POS để cập nhật dự báo. Nếu service lỗi, các rule cảnh báo độc
 lập vẫn chạy; kết quả dự báo cũ được đánh dấu và không thể tạo PO nháp từ gợi ý
-cũ. Python không chạy thì hệ thống không tự thay bằng dự báo Node.js.
+cũ. Python không chạy thì hệ thống không tự thay bằng dự báo Node.js. Sau khi cập
+nhật mã, khởi động lại cả Python và backend; backend yêu cầu phản hồi có
+`stock_history_policy: known-v1` để không dùng nhầm service Python phiên bản cũ.

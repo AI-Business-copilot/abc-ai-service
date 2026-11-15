@@ -110,13 +110,15 @@ def forecasts(body: ForecastRequest, request: Request, x_forecast_token: str | N
             results.append({"variant_id": item.variant_id, "status": "INSUFFICIENT_DATA", "series_days": len(rows), "reason": "SHORT_HISTORY"})
             continue
         clean = [row["units_sold"] for row in rows[-28:] if row["stockout"] is False]
-        if len(clean) < 7:
+        if len(clean) < 7 or any(row["stockout"] is None for row in rows[-28:]):
             results.append({"variant_id": item.variant_id, "status": "INSUFFICIENT_DATA", "series_days": len(rows), "reason": "CENSORED_HISTORY"})
             continue
+        last_unknown = next((index for index in range(len(rows) - 1, -1, -1) if rows[index]["stockout"] is None), -1)
+        known_history = rows[last_unknown + 1:]
         impute = metadata["impute_censored_history"]
-        scores = rolling_backtest(rows, models, impute)
+        scores = rolling_backtest(known_history, models, impute)
         selected = select_method(scores)
-        predictions = compare_methods(models, rows, impute)
+        predictions = compare_methods(models, known_history, impute)
         totals = predictions[selected]
         score = scores[selected]
         recent = rows[-28:]
@@ -156,5 +158,6 @@ def forecasts(body: ForecastRequest, request: Request, x_forecast_token: str | N
         "as_of": body.as_of.isoformat(),
         "model_version": metadata["model_version"],
         "dataset_kind": metadata["dataset_kind"],
+        "stock_history_policy": "known-v1",
         "results": results,
     }
