@@ -7,7 +7,8 @@ chứng về độ chính xác tại cửa hàng thật.
 
 ## Thiết lập trên Windows
 
-Yêu cầu Python 3.12. Từ thư mục này:
+Yêu cầu Python 3.12 và terminal PowerShell trong VS Code. Cài Python chính thức,
+sau đó mở terminal mới và tạo môi trường ảo một lần từ thư mục này:
 
 ```powershell
 py -3.12 -m venv .venv
@@ -53,13 +54,20 @@ huấn luyện hoặc đưa vào API. Bộ này không tạo dữ liệu giao d�
 ## API nội bộ
 
 Mô hình chỉ được tải từ thư mục artifact cục bộ do người vận hành chỉ định;
-service kiểm tra checksum và schema đặc trưng. Chạy trên loopback:
+service kiểm tra checksum và schema đặc trưng. Trước khi chạy, cấu hình
+`FORECAST_RESEARCH_TOKEN` trong `abc-backend\.env`. Token dùng chữ, số, dấu
+gạch dưới hoặc gạch ngang; không đưa token lên Git.
+
+Mỗi lần khởi động máy, mở terminal PowerShell trong VS Code, chuyển vào
+`abc-ml` và chạy:
 
 ```powershell
-$env:MODEL_DIR = (Resolve-Path .\artifacts\run-42).Path
-$env:FORECAST_API_TOKEN = Read-Host "Nhập token nội bộ"
-.\.venv\Scripts\python.exe -m uvicorn service:app --host 127.0.0.1 --port 8001
+.\start-service.ps1
 ```
+
+Giữ terminal mở khi sử dụng AI; `Ctrl+C` để dừng. Script dùng model
+`artifacts\run-42` và token trong backend `.env`, không in token ra màn hình.
+Nếu cổng 8001 đang được sử dụng, dừng service cũ trước khi chạy.
 
 `GET /health` trả trạng thái sẵn sàng. `POST /v1/forecasts:predict` yêu cầu header
 `X-Forecast-Token`; truyền `request_id`, `as_of` và `variants`, mỗi SKU gồm
